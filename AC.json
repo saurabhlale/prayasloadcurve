@@ -1,0 +1,21 @@
+{
+"EQ":"AC",
+"I_eer" :3.4,
+"I_capacity" :1.0,
+"I_is_temp_profile" :true,
+"T_ambient" :35.0,
+"I_ref_Temperature" :24,
+"I_room_vol" :60.0,
+"I_exposed_area" :27.0,
+"I_resolution" :5 ,
+"I_on_intervals" :[[9.0, 18.0], [21.0, 6.0]],
+"I_temp_file_path" :"D:\\Prayas\\demand curve\\temp_may.csv",
+"A_thickness" :0.15,
+"A_thermal_conductivity" :0.6,
+"A_On_offset" :0.75,
+"A_Off_offset" :-1.25,
+"A_Denisty" :1.293,
+"D_Specific_heat" :1.005,
+"A_Eff" :0.75,
+"A_SD_DEV_TIME" :5
+}

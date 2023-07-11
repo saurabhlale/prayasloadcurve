@@ -1,0 +1,22 @@
+{
+"EQ":"Heater",
+"I_capacity" :2.0,
+"I_is_temp_profile" :true,
+"T_ambient" :35.0,
+"I_ref_Temperature" :50.0,
+"I_resolution" :5 ,
+"I_on_intervals" :[6.0,9.0],
+"I_temp_file_path" :"D:\\Prayas\\demand curve\\temp_may.csv",
+"I_Diameter" :0.331,
+"I_Length" :0.602,
+"I_Family_size" :4,
+"A_thickness" :0.05,
+"A_thermal_conductivity" :0.04,
+"A_On_offset" :-3.25,
+"A_Off_offset" :-2,
+"A_Denisty" :997.0,
+"D_Specific_heat" :4.182,
+"A_Eff" :0.6,
+"A_Consumption_per_person" :0.009,
+"A_SD_DEV_TIME" :5
+}

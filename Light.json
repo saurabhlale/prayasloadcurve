@@ -1,0 +1,13 @@
+{
+"EQ":"Light",
+"I_watt" :15.0,
+"I_radiation_profile" :true,
+"I_light_threshold" :500.0,
+"I_resolution" :5,
+"I_preffered_time" :[17, 22.5],
+"A_Room_Radiaction_Efficiency" :0.4,
+"I_radiation_file_path" : "D:\\Prayas\\demand curve\\radiation_dec.csv",
+"A_flux_tol_lux" :126.582,
+"A_SD_DEV_TIME_ON" :1,
+"A_SD_DEV_TIME_OFF" :30
+}
