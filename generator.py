@@ -4,6 +4,11 @@ import pandas as pd
 from scipy.integrate import odeint
 import numpy as np
 import json
+from scipy.fft import fft, rfft, rfftfreq,irfft
+import joblib
+import pickle
+import sklearn
+import os
 
 def modelAC(T,t,cap,cond,Q,TA):
     dTdt = (cond *(TA - T) - Q)/cap
@@ -208,7 +213,7 @@ def modelHT(T,t,cap,cond,Q,TA):
     return dTdt
     
     
-def generate_heater_load_curve():
+def generate_heater_load_curve(inputs):
     
     I_capacity = inputs['I_capacity']
     I_is_temp_profile = inputs['I_is_temp_profile']
@@ -321,7 +326,89 @@ def generate_heater_load_curve():
     
     return times,power,temperatures_room,temperature 
     
+def load_object(file_path):
+    with open(file_path, 'rb') as file:
+        obj = pickle.load(file)
+    return obj
+
+
+def get_load_curv_knn_ref(inputs):
+   
+    size = inputs['I_Size']
+    typei = inputs['I_type']
+    rating = inputs['I_rating']
+    month = inputs['I_month']
+    K = inputs['A_Knn_N']
+    times = np.arange(0,24*60,15., dtype=np.double)
     
+    map_fet = {
+    'Direct Cool':1,
+    'Frost free':2,
+    '1 star':3,
+    '2 star':4,
+    '3 star':5,
+    '4 star':6,
+    '5 star':7,
+    'Don’t know':8,
+    'Not rated':9,
+    
+    }
+    
+    data_file_path = os.path.join('data', 'ref_size_norm.pkl')
+    
+    sz = load_object(data_file_path)
+    
+    data_file_path = os.path.join('data', 'nn_model_refrigerator.joblib')
+    
+    nbrs = joblib.load(data_file_path)
+    # Load DataFrame from compressed CSV file
+    
+    data_file_path = os.path.join('data', 'features.csv.gz')
+    features = pd.read_csv(data_file_path, compression='gzip')
+    
+    data_file_path = os.path.join('data', 'dfload1.csv.gz')
+    dfload1 = pd.read_csv(data_file_path, compression='gzip')
+
+    search_array = np.full((1, features.shape[1]-1),0.)
+    search_array[0,0] = (size - sz[0])/ (sz[1] - sz[0])
+    search_array[0,map_fet[typei]] = 1.
+    search_array[0,map_fet[rating]] = 1.
+    
+    
+    distances, indices = nbrs.kneighbors(search_array,K, return_distance=True)
+    
+    #print(distances)
+    #print(indices)
+    
+    if distances[0,0] == 0.:
+        devc = features.iloc[indices[0,0],0]
+        temp = dfload1[(dfload1['dpid'] == devc) & (dfload1['month']==month)].sort_values(by=['date', 'block']).reset_index()
+        start = np.random.randint(low=0, high=temp.shape[0] - 100, size=1)[0]
+        return times,temp['load'].to_numpy()[start:start+ 96]
+    else:
+        wts =  1./distances.flatten()
+        indices = indices.flatten()
+        
+        fftsum = np.empty((0,0))
+        for (ind,wt) in zip(indices,wts):
+            devc = features.iloc[ind,0]
+            temp = dfload1[(dfload1['dpid'] == devc) & (dfload1['month']==month)].sort_values(by=['date', 'block']).reset_index()
+            start = np.random.randint(low=0, high=temp.shape[0] - 100, size=1)[0]
+            ss = temp['load'].to_numpy()[start:start+ 96]
+            
+            yf = rfft(ss)
+            
+            if(fftsum.shape[0] == 0):
+                fftsum = yf*wt
+            else:
+                fftsum = fftsum + (yf*wt)
+        
+        #print(wts)
+        #print(np.sum(wts))
+        yffin = fftsum/np.sum(wts)
+        return times,irfft(yffin)
+                
+
 
     
 def plot_AC_images(times,power,temperatures_room,temperature):
@@ -423,6 +510,16 @@ def plot_Heater_images(times,power,temperatures_room,temperature):
     plt.savefig('load_curve_partial.png')
     plt.clf()
 
+def plot_Fridge_images(times,power):
+
+    hours = times/60
+    plt.step(hours, power)
+    plt.xlabel('Hours')
+    plt.ylabel('Load')
+    plt.title('Load curve 24 hours')
+    #plt.show()
+    plt.savefig('load_curve_full.png')
+    plt.clf()
 
 filein = input("Enter file name: ")
 inputs = populate_dictionary(filein)
@@ -439,8 +536,12 @@ elif inputs["EQ"] == "Light":
     plot_Light_images(times,power,luxsolarroom)
     np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
 elif inputs["EQ"] == "Heater":
-    times,power,temperatures_room,temperature = generate_heater_load_curve() 
+    times,power,temperatures_room,temperature = generate_heater_load_curve(inputs) 
     plot_Heater_images(times,power,temperatures_room,temperature)
+    np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
+elif inputs["EQ"] == "Fridge":
+    times,power = get_load_curv_knn_ref(inputs) 
+    plot_Fridge_images(times,power)
     np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
     
     
