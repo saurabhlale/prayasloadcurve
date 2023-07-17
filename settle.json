@@ -1,0 +1,9 @@
+{"EQ": "Settlement",
+"I_Resolution":5,
+"houses": 
+[
+["house.json", 5],
+["house2.json", 10],
+["house3.json", 20]
+]
+}

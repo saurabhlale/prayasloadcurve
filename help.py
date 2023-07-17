@@ -103,3 +103,24 @@ def is_heater_on(time):
     off_time = inputs['I_on_intervals'][1]*60.0
     
     return is_in_range(on_time,off_time, time)
+	
+	
+def get_scaled_load_curve(times,powers,timesreq):
+    powerreq = np.full_like(timesreq,np.nan)
+    
+    #print(times.shape)
+    #print(powers.shape)
+    
+    dataarr = np.concatenate((times.reshape((-1, 1)), powers.reshape((-1, 1))), axis=1)
+    dfsrc = pd.DataFrame(data = dataarr, columns = ['time', 'power'])
+    dfsrc['Type'] = "SRC"
+    
+    dataarr = np.concatenate((timesreq.reshape((-1, 1)), powerreq.reshape((-1, 1))), axis=1)
+    dftrg = pd.DataFrame(data = dataarr, columns = ['time', 'power'])
+    dftrg['Type'] = "TRG"
+    
+    temp = pd.concat([dfsrc,dftrg], axis=0).sort_values(by=['time']) #['Y'].interpolate(method='nearest')
+    temp["power"] = temp['power'].interpolate(method='ffill')
+    temp["power"] = temp['power'].interpolate(method='bfill')
+    
+    return temp[temp['Type'] == "TRG"]["power"].to_numpy()

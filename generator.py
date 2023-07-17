@@ -1,4 +1,6 @@
-from help import populate_dictionary,is_in_range,is_within_on_intervals,get_temp_array,is_within_sleep_intervals,get_speed_power,get_irradiation_array,is_heater_on
+from help import populate_dictionary,is_in_range,is_within_on_intervals,get_temp_array,is_within_sleep_intervals
+
+from help import get_speed_power,get_irradiation_array,is_heater_on,get_scaled_load_curve
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.integrate import odeint
@@ -373,9 +375,11 @@ def get_load_curv_knn_ref(inputs):
     search_array[0,0] = (size - sz[0])/ (sz[1] - sz[0])
     search_array[0,map_fet[typei]] = 1.
     search_array[0,map_fet[rating]] = 1.
+    #print(features.columns)
     
+    searchpd = pd.DataFrame(data=search_array, columns=features.columns[1:])
     
-    distances, indices = nbrs.kneighbors(search_array,K, return_distance=True)
+    distances, indices = nbrs.kneighbors(searchpd,K, return_distance=True)
     
     #print(distances)
     #print(indices)
@@ -521,6 +525,75 @@ def plot_Fridge_images(times,power):
     plt.savefig('load_curve_full.png')
     plt.clf()
 
+
+def load_curve_from_file(filein,resolution):
+    
+    #print(filein)
+    inputs2 = populate_dictionary(filein)
+    
+    timesreq = np.arange(0,24*60,resolution, dtype=np.double)
+    
+    
+    times = None
+    power = None
+    
+    
+    if inputs2["EQ"] == "AC":
+        times,power,temperatures_room,temperature = generate_ac_load_curve(inputs2)
+    elif inputs2["EQ"] == "Fan":
+        times,power,temperature = generate_fan_load_curve(inputs2)
+        power = power/1000.
+    elif inputs2["EQ"] == "Light":
+        times,power,luxsolarroom = generate_light_load_curve(inputs2)
+        power = power/1000.
+    elif inputs2["EQ"] == "Heater":
+        times,power,temperatures_room,temperature = generate_heater_load_curve(inputs2) 
+    elif inputs2["EQ"] == "Fridge":
+        times,power = get_load_curv_knn_ref(inputs2)
+    elif inputs2["EQ"] == "Agg":
+        times,power = agg_household(inputs2,'appliances') 
+
+
+        
+    powereq = get_scaled_load_curve(times,power,timesreq)
+    
+    return powereq
+        
+    
+    
+def agg_household(inputs, component, silent=True):
+    appliances = inputs[component]
+    I_resolution = inputs['I_Resolution']
+    
+    times = np.arange(0,24*60,I_resolution, dtype=np.double)
+    poweragg = np.full_like(times,0, dtype=np.double)
+
+    for app in appliances:
+        #print(app)
+        for cnt in range(app[1]):
+            powertemp = load_curve_from_file(app[0],I_resolution);
+            poweragg = poweragg + powertemp
+            
+    kwh=np.sum(poweragg*I_resolution)/60.
+
+    if(silent == False):
+        print(f"Energy Consumption : {kwh:.3f} kWh")
+
+    return times, poweragg
+
+def plot_Agg_images(times,power):
+
+    hours = times/60
+    plt.step(hours, power)
+    plt.xlabel('Hours')
+    plt.ylabel('Load')
+    plt.title('Load curve 24 hours')
+    #plt.show()
+    plt.savefig('load_curve_full.png')
+    plt.clf()
+
+
+
 filein = input("Enter file name: ")
 inputs = populate_dictionary(filein)
 if inputs["EQ"] == "AC":
@@ -541,6 +614,14 @@ elif inputs["EQ"] == "Heater":
     np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
 elif inputs["EQ"] == "Fridge":
     times,power = get_load_curv_knn_ref(inputs) 
+    plot_Fridge_images(times,power)
+    np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
+elif inputs["EQ"] == "Agg":
+    times,power = agg_household(inputs, 'appliances', False) 
+    plot_Fridge_images(times,power)
+    np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
+elif inputs["EQ"] == "Settlement":
+    times,power = agg_household(inputs,'houses', False) 
     plot_Fridge_images(times,power)
     np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
     

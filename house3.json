@@ -1,0 +1,12 @@
+{"EQ": "Agg",
+"I_Resolution":5,
+"appliances": 
+[
+["Heater.json", 0],
+["AC.json", 0],
+["Fan.json", 5],
+["Light.json", 10],
+["Refrigerator.json", 1]
+
+]
+}
