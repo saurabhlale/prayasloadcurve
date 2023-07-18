@@ -32,7 +32,7 @@
 "_comment" : "Density of air in kg/m3",
 "D_Specific_heat" :1.005,
 "_comment" : "Spec heat for air KJ/kgK",
-"A_Eff" :0.75,
+"A_Eff" :0.8,
 "_comment" : "Heat removal efficiency",
 "A_SD_DEV_TIME" :5,
 "_comment" : "Standard deviation in minutes"

@@ -37,7 +37,7 @@ def generate_ac_load_curve(inputs):
     A_Eff = inputs['A_Eff']
     A_SD_DEV_TIME = inputs['A_SD_DEV_TIME']
     
-    D_cop = I_eer/3.41214
+    D_cop = I_eer
     D_heat_removed = I_capacity*A_Eff*3.5 #kW
     D_Conductance = ((A_thermal_conductivity*I_exposed_area)/(A_thickness*1000)) # (kA/L), kW
     D_Temperature_on = I_ref_Temperature + A_On_offset
