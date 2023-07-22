@@ -6,6 +6,7 @@
 ["AC.json", 0],
 ["Fan.json", 5],
 ["Light.json", 10],
+["TV.json", 1],
 ["Refrigerator.json", 1]
 
 ]

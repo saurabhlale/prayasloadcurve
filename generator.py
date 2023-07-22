@@ -16,7 +16,136 @@ def modelAC(T,t,cap,cond,Q,TA):
     dTdt = (cond *(TA - T) - Q)/cap
     return dTdt
 
+def modelACWall(Z,t,capR,capW,cond,Q,TA,H):
+    TW = Z[0]
+    TR = Z[1]
+    #dTWdt = ((cond *(TA - Z[1])) - H*(Z[0] - Z[1]))/capW
+    dTRdt = ((cond *(TA - Z[1])) + (H*(Z[0] - Z[1])) - Q)/capR
+    dTWdt = (H*(Z[1] - Z[0]))/capW
+    dZdt = [dTWdt,dTRdt]
+    return dZdt
+    
 def generate_ac_load_curve(inputs):
+    if (inputs['I_include_wall_storage']):
+        return generate_ac_load_curve_with_wall(inputs)
+    else:
+        return generate_ac_load_curve_without_wall(inputs)
+ 
+def generate_ac_load_curve_with_wall(inputs):
+    
+    I_eer = inputs['I_eer']
+    I_capacity = inputs['I_capacity']
+    I_is_temp_profile = inputs['I_is_temp_profile']
+    T_ambient = inputs['T_ambient']
+    I_ref_Temperature = inputs['I_ref_Temperature']
+    I_room_vol = inputs['I_room_vol']
+    I_exposed_area = inputs['I_exposed_area']
+    I_resolution = inputs['I_resolution']
+    I_temp_file_path = inputs['I_temp_file_path']
+    
+    A_thickness = inputs['A_thickness']
+    A_thermal_conductivity = inputs['A_thermal_conductivity']
+    A_On_offset = inputs['A_On_offset']
+    A_Off_offset = inputs['A_Off_offset']
+    A_Denisty = inputs['A_Denisty']
+    D_Specific_heat = inputs['D_Specific_heat']
+    A_Eff = inputs['A_Eff']
+    A_SD_DEV_TIME = inputs['A_SD_DEV_TIME']
+    
+    A_Denisty_Wall = inputs['A_Denisty_Wall']
+    D_Specific_heat_Wall = inputs['D_Specific_heat_Wall']
+    A_Convective_Coefficient = inputs['A_Convective_Coefficient']
+    
+    D_cop = I_eer
+    D_heat_removed = I_capacity*A_Eff*3.5 #kW
+    D_Conductance = ((A_thermal_conductivity*I_exposed_area)/(A_thickness*1000)) # (kA/L), kW
+    D_Convectance = ((A_Convective_Coefficient*I_exposed_area)/1000.) # (hAL), kW/K
+    D_Temperature_on = I_ref_Temperature + A_On_offset
+    D_Temperature_off = I_ref_Temperature + A_Off_offset
+    
+    
+    times = np.arange(0,24*60,I_resolution, dtype=np.double)
+    #print(times)
+    temperature =  get_temp_array(times)
+    temperatures_room = temperature.copy()
+    temperatures_wall = temperature.copy()
+    power = np.full_like(times,0, dtype=np.double)
+    is_AC_on = False
+    is_Cooling_on = False
+    T_Curr = temperature[0]
+    T_CurrW = temperature[0]
+
+    for i in range(len(times)-1):
+        
+        #if(i>3):
+            #break
+        
+        #is_Cooling_onePrev = 
+        
+        is_AC_on = is_within_on_intervals(times[i])
+        
+        if is_AC_on & (is_Cooling_on == False) & (T_Curr >= D_Temperature_on):
+            is_Cooling_on = True
+        if (is_Cooling_on == True) & (T_Curr <= D_Temperature_off):
+            is_Cooling_on = False
+
+
+        Qin = D_Conductance*(temperature[i] - T_Curr)
+
+        Qout = 0
+
+
+        if is_Cooling_on & is_AC_on:
+            Qout = D_heat_removed
+
+
+        delta_t = times[i+1] - times[i]
+        
+        capR = I_room_vol*A_Denisty*D_Specific_heat
+        capW = I_exposed_area*A_thickness*A_Denisty_Wall*D_Specific_heat_Wall
+        cond = D_Conductance
+        H = D_Convectance
+        Q = Qout
+        TR = [T_Curr]
+        TW = [T_CurrW]
+        TA = temperature[i]
+        TZ = [T_CurrW,T_Curr]
+        t = np.linspace(0,delta_t*60,300)
+        result = odeint(modelACWall,TZ,t,args=(capR,capW,cond,Q,TA,H,))
+        
+        Tnew = result[-1,1]
+        Tnew2 =  result[-1,0]
+        H_to_be_removed_total = I_room_vol*A_Denisty*D_Specific_heat*(T_Curr - D_Temperature_off) +  (I_exposed_area*A_thickness*A_Denisty_Wall*D_Specific_heat_Wall*(T_CurrW - D_Temperature_off))
+
+        T_Curr = temperatures_room[i+1] = Tnew
+        T_CurrW = temperatures_wall[i+1] = Tnew2
+
+        
+        if is_AC_on:
+            if is_Cooling_on & (Tnew > D_Temperature_off):
+                power[i] = D_heat_removed/D_cop
+                #temperatures_room[i+1] = Tnew
+            elif is_Cooling_on & (H_to_be_removed_total > 0):
+                fct = result[result > D_Temperature_off].shape[0]/result.shape[0]
+                tmp = fct*D_heat_removed/D_cop
+                if fct > 1.0:
+                    tmp = np.min([D_heat_removed/D_cop, fct*D_heat_removed/D_cop])
+                power[i] = np.max([0.2*D_heat_removed/D_cop,tmp])
+                T_Curr = temperatures_room[i+1] = D_Temperature_off
+                #temperatures_room[i+1] = D_Temperature_off
+            else:
+                power[i] = 0.2*D_heat_removed/D_cop
+        
+        
+            
+        #power[i+1] = power[i]
+    
+    
+    return times,power,temperatures_room,temperature,temperatures_wall 
+    
+    
+ 
+def generate_ac_load_curve_without_wall(inputs):
     
     I_eer = inputs['I_eer']
     I_capacity = inputs['I_capacity']
@@ -109,7 +238,7 @@ def generate_ac_load_curve(inputs):
         #power[i+1] = power[i]
     
     
-    return times,power,temperatures_room,temperature 
+    return times,power,temperatures_room,temperature,np.empty([0, 0])
     
 def generate_fan_load_curve(inputs):
     
@@ -413,9 +542,40 @@ def get_load_curv_knn_ref(inputs):
         return times,irfft(yffin)
                 
 
-
+def generate_generic_load_curve(inputs):
     
-def plot_AC_images(times,power,temperatures_room,temperature):
+    I_watt = inputs['I_watt']
+    I_on_intervals = inputs['I_on_intervals']
+    I_resolution = inputs['I_resolution']
+    A_SD_DEV_TIME = inputs['A_SD_DEV_TIME']
+
+    is_device_on = False
+    times = np.arange(0,24*60,I_resolution, dtype=np.double)
+    #print(times)
+   
+    power = np.full_like(times,0, dtype=np.double)
+    
+
+    pwr = 0
+    
+    
+    for i in range(len(times)-1):
+        
+        is_device_on = is_within_on_intervals(times[i])
+        
+        if (is_device_on):
+            pwr = I_watt
+        else:
+            pwr =0.
+        
+        power[i] =  pwr
+        
+    #print('in generic method')
+    #print(times.shape)
+    #print(power.shape)
+    return times,power
+    
+def plot_AC_images(times,power,temperatures_room,temperature,temperatures_wall):
     
     hours = times/60
     plt.step(hours, power)
@@ -426,15 +586,27 @@ def plot_AC_images(times,power,temperatures_room,temperature):
     plt.savefig('load_curve_full.png')
     plt.clf()
     
-    plt.plot(hours, temperatures_room, label='room temperature')
-    plt.plot(hours, temperature, label='ambient temperature')
-    plt.legend()
-    plt.xlabel('Hours')
-    plt.ylabel('Temperature')
-    plt.title('Temperatures')
-    #plt.show()
-    plt.savefig('temperatures.png')
-    plt.clf()
+    if (temperatures_wall.shape[0] == 0):
+        plt.plot(hours, temperatures_room, label='room temperature')
+        plt.plot(hours, temperature, label='ambient temperature')
+        plt.legend()
+        plt.xlabel('Hours')
+        plt.ylabel('Temperature')
+        plt.title('Temperatures')
+        #plt.show()
+        plt.savefig('temperatures.png')
+        plt.clf()
+    else:
+        plt.plot(hours, temperatures_room, label='room temperature')
+        plt.plot(hours, temperatures_wall, label='wall temperature')
+        plt.plot(hours, temperature, label='ambient temperature')
+        plt.legend()
+        plt.xlabel('Hours')
+        plt.ylabel('Temperature')
+        plt.title('Temperatures')
+        #plt.show()
+        plt.savefig('temperatures.png')
+        plt.clf()
 
     plt.step(hours, power)
     plt.xlim([6, 12])
@@ -537,9 +709,11 @@ def load_curve_from_file(filein,resolution):
     times = None
     power = None
     
+    #print('New app')
+    #print(inputs2["EQ"])
     
     if inputs2["EQ"] == "AC":
-        times,power,temperatures_room,temperature = generate_ac_load_curve(inputs2)
+        times,power,temperatures_room,temperature,temperatures_wall = generate_ac_load_curve(inputs2)
     elif inputs2["EQ"] == "Fan":
         times,power,temperature = generate_fan_load_curve(inputs2)
         power = power/1000.
@@ -550,11 +724,17 @@ def load_curve_from_file(filein,resolution):
         times,power,temperatures_room,temperature = generate_heater_load_curve(inputs2) 
     elif inputs2["EQ"] == "Fridge":
         times,power = get_load_curv_knn_ref(inputs2)
+    elif inputs2["EQ"] == "Generic":
+        #print('In generic')
+        times,power = generate_generic_load_curve(inputs2)
+        power = power/1000.
     elif inputs2["EQ"] == "Agg":
         times,power = agg_household(inputs2,'appliances') 
 
 
-        
+    
+    #print(times.shape)
+    #print(power.shape)
     powereq = get_scaled_load_curve(times,power,timesreq)
     
     return powereq
@@ -597,8 +777,8 @@ def plot_Agg_images(times,power):
 filein = input("Enter file name: ")
 inputs = populate_dictionary(filein)
 if inputs["EQ"] == "AC":
-    times,power,temperatures_room,temperature = generate_ac_load_curve(inputs)
-    plot_AC_images(times,power,temperatures_room,temperature)
+    times,power,temperatures_room,temperature,temperatures_wall = generate_ac_load_curve(inputs)
+    plot_AC_images(times,power,temperatures_room,temperature,temperatures_wall)
     np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
 elif inputs["EQ"] == "Fan":
     times,power,temperature = generate_fan_load_curve(inputs)
@@ -614,6 +794,10 @@ elif inputs["EQ"] == "Heater":
     np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
 elif inputs["EQ"] == "Fridge":
     times,power = get_load_curv_knn_ref(inputs) 
+    plot_Fridge_images(times,power)
+    np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
+elif inputs["EQ"] == "Generic":
+    times,power = generate_generic_load_curve(inputs) 
     plot_Fridge_images(times,power)
     np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
 elif inputs["EQ"] == "Agg":

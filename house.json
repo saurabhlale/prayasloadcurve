@@ -3,7 +3,7 @@
 "appliances": 
 [
 ["Heater.json", 1],
-["AC.json", 0],
+["AC.json", 1],
 ["Fan.json", 4],
 ["Light.json", 6],
 ["TV.json", 1],
