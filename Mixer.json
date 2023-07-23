@@ -1,0 +1,16 @@
+{
+"EQ":"Generic",
+"I_watt" :750,
+"_comment" : "Watt",
+"I_method" :2,
+"_comment" : "1:From start and stop interval, 2:From start interval and duration",
+"I_Duration" :5,
+"_comment" : "Minutes",
+"I_start_interval" :[7,9.5],
+"I_on_intervals" :[[14, 16], [19, 21.5]],
+"_comment" : "Intervals for appliance on in hours of day",
+"I_resolution" :5,
+"_comment" : "Minutes",
+"A_SD_DEV_TIME" :1,
+"_comment" : "Standard deviation in minutes"
+}

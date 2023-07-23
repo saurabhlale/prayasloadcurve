@@ -11,6 +11,7 @@ import joblib
 import pickle
 import sklearn
 import os
+import random
 
 def modelAC(T,t,cap,cond,Q,TA):
     dTdt = (cond *(TA - T) - Q)/cap
@@ -541,12 +542,98 @@ def get_load_curv_knn_ref(inputs):
         yffin = fftsum/np.sum(wts)
         return times,irfft(yffin)
                 
+def generate_ev_load_curve(inputs):
+    
+    cv_start_time = 0
+    
+    def get_charging_current(soc,time):
+        if I_charging_method == 1:
+            return D_Charging_current_CC
+        else:
+            if (soc < A_CC_charging_threshold):
+                return D_Charging_current_CC
+            else:
+                Ttemp = abs(time - cv_start_time)
+                #print(Ttemp)
+                Cval = np.exp(Ttemp/time_constant) 
 
+                Cval =D_Charging_current_CC/Cval
+                
+                return Cval
+            
+    I_battery_energy_capacity = inputs['I_battery_energy_capacity']
+    I_charging_method = inputs['I_charging_method']
+    I_charging_prob = inputs['I_charging_prob']
+    I_start_interval = inputs['I_start_interval']
+    I_resolution = inputs['I_resolution']
+    I_charger_rating = inputs['I_charger_rating']
+    
+    A_battery_voltage = inputs['A_battery_voltage']
+    A_start_soc = inputs['A_start_soc']
+    A_charging_voltage = inputs['A_charging_voltage']
+    A_CC_charging_threshold = inputs['A_CC_charging_threshold']
+    
+    D_Charging_current_CC = (I_charger_rating*1000)/A_charging_voltage
+    D_charge_capacity = ((1000*I_battery_energy_capacity)/A_battery_voltage)
+    D_charge_current_CC = D_charge_capacity*D_Charging_current_CC
+    D_Charging_start_time = np.random.randint(low=I_start_interval[0]*60, high=I_start_interval[1]*60, size=1).astype(np.double)[0]
+
+
+    is_charger_on = random.random() <= I_charging_prob
+    is_charging_on = False
+    is_charging_complete = False
+    is_cc_threshold = False
+    
+    
+    soc = A_start_soc
+    
+    times = np.arange(0,24*60,I_resolution, dtype=np.double)
+    #print(times)
+    power = np.full_like(times,0, dtype=np.double)
+    socs = np.full_like(times,A_start_soc, dtype=np.double)
+    time_constant = 1;
+    
+    for i in range(len(times)-1):
+        
+        if ((times[i] >= D_Charging_start_time) & is_charger_on & (is_charging_complete == False)):
+            is_charging_on = True
+            
+        if((soc >= 1.) & (is_charging_complete == False)):
+            is_charging_on = False
+            is_charging_complete = True
+            #print ((D_Charging_start_time - times[i])/60.)
+            
+        if((soc >= A_CC_charging_threshold) & (is_cc_threshold == False)):
+            cv_start_time = times[i]
+            is_cc_threshold = True
+            time_constant = abs(cv_start_time - D_Charging_start_time)/2
+            #print(time_constant)
+            
+        pwr = 0.
+        if is_charging_on:
+            charging_curr = get_charging_current(soc,times[i])
+            
+            soc = soc + ((charging_curr*I_resolution/60.)/D_charge_capacity)
+            pwr = charging_curr*A_charging_voltage
+            #current[i] = charging_curr
+        
+        if is_charger_on:
+            socs[i] = soc
+        
+        power[i] = pwr
+        
+    
+    return times,power,socs
+                         
+            
 def generate_generic_load_curve(inputs):
     
     I_watt = inputs['I_watt']
+    I_method = inputs['I_method']
     I_on_intervals = inputs['I_on_intervals']
+    I_start_interval = inputs['I_start_interval']
     I_resolution = inputs['I_resolution']
+    I_Duration = inputs['I_Duration']
     A_SD_DEV_TIME = inputs['A_SD_DEV_TIME']
 
     is_device_on = False
@@ -555,13 +642,25 @@ def generate_generic_load_curve(inputs):
    
     power = np.full_like(times,0, dtype=np.double)
     
+    D_Charging_start_time = np.random.randint(low=I_start_interval[0]*60, high=I_start_interval[1]*60, size=1).astype(np.double)[0]
+    duration_st = np.random.normal(I_Duration,A_SD_DEV_TIME,size=1)[0]
+    off_time =  D_Charging_start_time + duration_st
+    
+    #print(D_Charging_start_time)
+    #print(off_time)
 
     pwr = 0
     
     
     for i in range(len(times)-1):
         
-        is_device_on = is_within_on_intervals(times[i])
+        if(I_method == 1):
+            is_device_on = is_within_on_intervals(times[i])
+        else:
+            
+            on_time = D_Charging_start_time
+            
+            is_device_on = is_in_range(D_Charging_start_time,off_time, times[i])
         
         if (is_device_on):
             pwr = I_watt
@@ -698,6 +797,21 @@ def plot_Fridge_images(times,power):
     plt.clf()
 
 
+def plot_EV_images(times,power,socs):
+    hours = times/60
+    fig, ax1 = plt.subplots()
+    plt.title("Load curve")
+    ax2 = ax1.twinx()
+    ax1.plot(hours, power,'-g')
+    ax2.plot(hours, socs*100.,'-b')
+
+    ax1.set_xlabel('Hours')
+    ax1.set_ylabel('Power', color='g')
+    ax2.set_ylabel('Charge %', color='b')
+
+    plt.savefig('load_curve_full.png')
+    plt.clf()
+
 def load_curve_from_file(filein,resolution):
     
     #print(filein)
@@ -724,6 +838,9 @@ def load_curve_from_file(filein,resolution):
         times,power,temperatures_room,temperature = generate_heater_load_curve(inputs2) 
     elif inputs2["EQ"] == "Fridge":
         times,power = get_load_curv_knn_ref(inputs2)
+    elif inputs2["EQ"] == "EV":
+        times,power,socs = generate_ev_load_curve(inputs2)
+        power = power/1000.
     elif inputs2["EQ"] == "Generic":
         #print('In generic')
         times,power = generate_generic_load_curve(inputs2)
@@ -799,6 +916,10 @@ elif inputs["EQ"] == "Fridge":
 elif inputs["EQ"] == "Generic":
     times,power = generate_generic_load_curve(inputs) 
     plot_Fridge_images(times,power)
+    np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
+elif inputs["EQ"] == "EV":
+    times,power,socs = generate_ev_load_curve(inputs)
+    plot_EV_images(times,power,socs)
     np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
 elif inputs["EQ"] == "Agg":
     times,power = agg_household(inputs, 'appliances', False) 

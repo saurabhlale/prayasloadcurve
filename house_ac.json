@@ -2,11 +2,12 @@
 "I_Resolution":5,
 "appliances": 
 [
-["Heater.json", 0],
-["AC.json", 0],
-["Fan.json", 5],
-["Light.json", 10],
+["Heater.json", 1],
+["AC.json", 1],
+["Fan.json", 4],
+["Light.json", 6],
 ["TV.json", 1],
+["Mixer.json", 1],
 ["Refrigerator.json", 1]
 
 ]

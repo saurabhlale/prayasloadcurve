@@ -1,0 +1,23 @@
+{
+"EQ":"EV",
+"I_battery_energy_capacity" :24,
+"_comment" : "Battery capacity in kWh",
+"I_charging_method" :2,
+"_comment" : "1: for constant current, 2: for constant current constant voltage",
+"I_charging_prob" :0.9,
+"_comment" : "Probability that we are going charge EV in day",
+"I_start_interval" :[17,17.5],
+"_comment" : "Possible interval for starting EV charging",
+"I_resolution" :5,
+"_comment" : "Minutes",
+"I_charger_rating" :3.3,
+"_comment" : "Charger rating in kW",
+"A_battery_voltage" :230,
+"_comment" : "Volts",
+"A_start_soc" :0.3,
+"_comment" : "Starting state of charge",
+"A_charging_voltage" :230,
+"_comment" : "Volts",
+"A_CC_charging_threshold" :0.8,
+"_comment" : "Threshold of soc , beyong which CV charging takes over CC charging"
+}

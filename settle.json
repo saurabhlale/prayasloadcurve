@@ -2,8 +2,9 @@
 "I_Resolution":5,
 "houses": 
 [
-["house.json", 5],
-["house2.json", 10],
-["house3.json", 20]
+["house_ac.json", 8],
+["house_heater.json", 14],
+["house_basic.json", 30],
+["house_ev.json",6]
 ]
 }
