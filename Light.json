@@ -12,7 +12,7 @@
 "_comment" : "Time of usage in hours of day",
 "A_Room_Radiaction_Efficiency" :0.4,
 "_comment" : "How much ambient irration is percolated in room",
-"I_radiation_file_path" : "D:\\Prayas\\demand curve\\radiation_dec.csv",
+"I_radiation_file_path" : "radiation_dec.csv",
 "_comment" : "Irrdation profile if opted for it",
 "A_flux_tol_lux" :126.582,
 "_comment" : "Conversion of irrdation to luminosity in lux",

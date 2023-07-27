@@ -97,6 +97,9 @@ def get_irradiation_array(timearray):
         tempf['Hour'] = np.floor_divide(timearray,60,dtype=np.double)
         tempf = tempf.join(T_tempdata[['Hour', 'DHI']],on='Hour', how='left', lsuffix='_caller', rsuffix='_other')
         return tempf['DHI'].to_numpy()
+    else:
+        return np.full_like(timearray,0.,dtype=np.double)
+        
         
 def is_heater_on(time):
     on_time = inputs['I_on_intervals'][0]*60.0

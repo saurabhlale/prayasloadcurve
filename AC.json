@@ -20,7 +20,7 @@
 "_comment" : "Minutes",
 "I_on_intervals" :[[9.0, 17.0], [19.0, 6.0]],
 "_comment" : "Intervals for appliance on in hours of day",
-"I_temp_file_path" :"D:\\Prayas\\demand curve\\temp_may.csv",
+"I_temp_file_path" :"temp_may.csv",
 "_comment" : "Path to temperature profile if opted for profile instead of constant value",
 "A_thickness" :0.15,
 "_comment" : "m",

@@ -12,6 +12,7 @@ import pickle
 import sklearn
 import os
 import random
+from datetime import datetime
 
 def modelAC(T,t,cap,cond,Q,TA):
     dTdt = (cond *(TA - T) - Q)/cap
@@ -674,6 +675,89 @@ def generate_generic_load_curve(inputs):
     #print(power.shape)
     return times,power
     
+def get_irradiation_array_solar_array(timearray,inputs):
+
+    A_Solar_Constant = inputs['A_Solar_Constant']
+    A_Air_transmissibility = inputs['A_Air_transmissibility']
+    I_Lattitute = inputs['I_Lattitute']
+    I_Tilt_Angle = inputs['I_Tilt_Angle']
+    I_Day = inputs['I_Day']
+    I_radiation_profile = inputs['I_radiation_profile']
+    I_radiation_file_path = inputs['I_radiation_file_path']
+    
+    #timearray = times
+    if I_radiation_profile:
+        T_tempdata = pd.read_csv(I_radiation_file_path)
+        tempf = pd.DataFrame(timearray, columns=['Minutes'])
+        tempf['Hour'] = np.floor_divide(timearray,60,dtype=np.double)
+        tempf = tempf.join(T_tempdata[['Hour', 'GHI']],on='Hour', how='left', lsuffix='_caller', rsuffix='_other')
+        return tempf['GHI'].to_numpy()
+    else:
+        tempf = pd.DataFrame(timearray, columns=['Minutes'])
+        tempf['Hour'] = timearray/60
+
+        date_object = datetime.strptime(I_Day, '%Y-%m-%d')
+        Nday = date_object.timetuple().tm_yday
+
+        Delta = 23.45*np.sin(np.radians((360*(284 + Nday))/365.))
+
+        Effective_Lat = I_Lattitute - I_Tilt_Angle
+
+        #H_angle = (15 * (tempf['Hour'].to_numpy() - 12)) + I_Longitude
+
+        H_angle = (15 * (tempf['Hour'].to_numpy() - 12))
+
+        #H_angle = (15 * (12 - tempf['Hour'].to_numpy()))
+
+        #[sinδ sin(θ −α)+cosδ cos(θ −α)cosφ]dφ .
+
+        temp = (np.sin(np.radians(Delta))*np.sin(np.radians(Effective_Lat))) + (np.cos(np.radians(Delta))*np.cos(np.radians(Effective_Lat))*np.cos(np.radians(H_angle)))
+
+
+        eps = 1 + (0.033*np.cos((2*np.pi*Nday)/365))
+        IH = (12/np.pi)*A_Solar_Constant*eps*A_Air_transmissibility*temp
+
+        IH = A_Solar_Constant*A_Air_transmissibility*temp
+
+        mask = IH < 0.
+
+        IH[mask] = 0
+        return IH
+    
+def generate_solar_panel_load_curve(inputs):
+    
+    I_resolution = inputs['I_resolution']
+    I_rated_power = inputs['I_rated_power']
+    A_Startup_insolation = inputs['A_Startup_insolation']
+    I_Area = inputs['I_Area']
+    I_Eff = inputs['I_Eff']
+    I_No_panel = inputs['I_No_panel']
+    
+    times = np.arange(0,24*60,I_resolution, dtype=np.double)
+    irradiation =  get_irradiation_array_solar_array(times, inputs)
+    power = np.full_like(times,0, dtype=np.double)
+    #on_time = I_preffered_time[0] -90
+    #off_time = I_preffered_time[1]
+    U_limit = I_rated_power
+    #print(U_limit)
+    #print(A_Startup_insolation)
+    for i in range(len(times)-1):
+        
+        pwr =0.
+        if (irradiation[i] > A_Startup_insolation):
+            #print('here')
+            ptemp = (irradiation[i] - A_Startup_insolation)*I_Area*I_Eff
+            pwr = np.min([ptemp,U_limit])*I_No_panel
+        
+        
+        power[i] = pwr
+        
+    kwh=np.sum(power*I_resolution)/(1000*60)
+
+    
+    print(f"Energy produced by solar cell: {kwh:.3f} kWh")
+    return times,power,irradiation
+    
 def plot_AC_images(times,power,temperatures_room,temperature,temperatures_wall):
     
     hours = times/60
@@ -811,7 +895,22 @@ def plot_EV_images(times,power,socs):
 
     plt.savefig('load_curve_full.png')
     plt.clf()
+    
+def plot_Solar_Panel_images(times,power,irr):
 
+    hours = times/60
+    fig, ax1 = plt.subplots()
+    plt.title("Light load curve")
+    ax2 = ax1.twinx()
+    ax1.plot(hours, power,'-g')
+    ax2.plot(hours, irr,'-b')
+
+    ax1.set_xlabel('Hours')
+    ax1.set_ylabel('Power', color='g')
+    ax2.set_ylabel('Solar Irridation', color='b')
+    plt.savefig('load_curve_full.png')
+    plt.clf()
+    
 def load_curve_from_file(filein,resolution):
     
     #print(filein)
@@ -928,6 +1027,10 @@ elif inputs["EQ"] == "Agg":
 elif inputs["EQ"] == "Settlement":
     times,power = agg_household(inputs,'houses', False) 
     plot_Fridge_images(times,power)
+    np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
+elif inputs["EQ"] == "SolarPanel":
+    times,power,irr = generate_solar_panel_load_curve(inputs) 
+    plot_Solar_Panel_images(times,power,irr)
     np.savetxt('power.csv', np.concatenate((times.reshape((-1, 1)), power.reshape((-1, 1))), axis=1), delimiter=',')
     
     
