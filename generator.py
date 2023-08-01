@@ -16,17 +16,22 @@ from datetime import datetime
 
 class stathelper:
     app_counter={}
+    app_power_counter={}
     app_list=['AC', 'Fan', 'Generic', 'EV', 'Fridge', 'Heater', 'Light']
     collect_data = False
+    resolution = None
     
     def insert_load_curve(self,app,power,resolution):
 
         if ((app in self.app_list) and self.collect_data):
             kwh=np.sum(power*resolution)/60.
+            self.resolution = resolution
             if (app in self.app_counter):
                 self.app_counter[app] = self.app_counter[app] + kwh
+                self.app_power_counter[app] = self.app_power_counter[app] + power
             else:
                 self.app_counter[app] = kwh
+                self.app_power_counter[app] = power
 
     def plot_energy_pi(self):
         
@@ -48,6 +53,18 @@ class stathelper:
         plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
         # plt.show()
         plt.savefig('energy_pi_chart.png')
+        plt.clf()
+
+        timesreq = np.arange(0,24*60,self.resolution, dtype=np.double)
+        hours = timesreq/60.
+        for app in self.app_power_counter:
+            plt.fill_between(hours, self.app_power_counter[app], alpha=0.5, label=app)
+
+        plt.xlabel('Hours')
+        plt.ylabel('Power(kW)')
+        plt.title('Aggregated area chart')
+        plt.legend()
+        plt.savefig('power_aggregate_area_chart.png')
         plt.clf()
    
 def modelAC(T,t,cap,cond,Q,TA):
