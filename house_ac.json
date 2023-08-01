@@ -4,8 +4,10 @@
 [
 ["Heater.json", 1],
 ["AC.json", 1],
-["Fan.json", 4],
-["Light.json", 6],
+["Fan.json", 2],
+["Light.json", 3],
+["LightBR.json", 5],
+["FanBR.json", 3],
 ["TV.json", 1],
 ["Mixer.json", 1],
 ["Refrigerator.json", 1]

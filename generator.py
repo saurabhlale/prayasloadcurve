@@ -14,6 +14,42 @@ import os
 import random
 from datetime import datetime
 
+class stathelper:
+    app_counter={}
+    app_list=['AC', 'Fan', 'Generic', 'EV', 'Fridge', 'Heater', 'Light']
+    collect_data = False
+    
+    def insert_load_curve(self,app,power,resolution):
+
+        if ((app in self.app_list) and self.collect_data):
+            kwh=np.sum(power*resolution)/60.
+            if (app in self.app_counter):
+                self.app_counter[app] = self.app_counter[app] + kwh
+            else:
+                self.app_counter[app] = kwh
+
+    def plot_energy_pi(self):
+        
+
+        _, _, autotexts = plt.pie(list(self.app_counter.values()), labels=list(self.app_counter.keys()), autopct='%1.1f%%', shadow=False, startangle=140)
+
+        # Add size values as annotations
+        for i, size in enumerate(list(self.app_counter.values())):
+            text = f'{size:.2f} kWh \n{autotexts[i].get_text()}'
+            autotexts[i].set_text(text)
+            autotexts[i].set_fontsize(8)
+
+        en = sum(self.app_counter.values())
+        # Add a title
+        text = f'Energy consumption by appliance {en:.2f} kWh'
+        plt.title(text)
+
+        # Show the pie chart
+        plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        # plt.show()
+        plt.savefig('energy_pi_chart.png')
+        plt.clf()
+   
 def modelAC(T,t,cap,cond,Q,TA):
     dTdt = (cond *(TA - T) - Q)/cap
     return dTdt
@@ -813,7 +849,7 @@ def plot_Fan_images(times,power,temperature):
 
     ax1.set_xlabel('Hours')
     ax1.set_ylabel('Power', color='g')
-    ax2.set_ylabel('Room Temperature', color='g')
+    ax2.set_ylabel('Room Temperature', color='b')
 
     #plt.show()
     plt.savefig('load_curve_full.png')
@@ -953,6 +989,8 @@ def load_curve_from_file(filein,resolution):
     #print(power.shape)
     powereq = get_scaled_load_curve(times,power,timesreq)
     
+    app_energy_counter.insert_load_curve(inputs2["EQ"],powereq,resolution)
+
     return powereq
         
     
@@ -964,13 +1002,17 @@ def agg_household(inputs, component, silent=True):
     times = np.arange(0,24*60,I_resolution, dtype=np.double)
     poweragg = np.full_like(times,0, dtype=np.double)
 
+    app_energy_counter.collect_data = True
+
     for app in appliances:
         #print(app)
         for cnt in range(app[1]):
-            powertemp = load_curve_from_file(app[0],I_resolution);
+            powertemp = load_curve_from_file(app[0],I_resolution)
             poweragg = poweragg + powertemp
             
-    kwh=np.sum(poweragg*I_resolution)/60.
+    kwh=np.sum(poweragg*I_resolution)/60
+
+    app_energy_counter.plot_energy_pi()
 
     if(silent == False):
         print(f"Energy Consumption : {kwh:.3f} kWh")
@@ -992,6 +1034,9 @@ def plot_Agg_images(times,power):
 
 filein = input("Enter file name: ")
 inputs = populate_dictionary(filein)
+
+app_energy_counter = stathelper()
+
 if inputs["EQ"] == "AC":
     times,power,temperatures_room,temperature,temperatures_wall = generate_ac_load_curve(inputs)
     plot_AC_images(times,power,temperatures_room,temperature,temperatures_wall)

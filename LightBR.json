@@ -1,0 +1,23 @@
+{
+"EQ":"Light",
+"I_watt" :15.0,
+"_comment" : "Light powe watt",
+"I_radiation_profile" :true,
+"_comment" : "Are we using irridation profile",
+"I_light_threshold" :500.0,
+"_comment" : "Comfortale luminosity in lux",
+"I_resolution" :5,
+"_comment" : "Minutes",
+"I_preffered_time" :[22, 23],
+"_comment" : "Time of usage in hours of day",
+"A_Room_Radiaction_Efficiency" :0.4,
+"_comment" : "How much ambient irration is percolated in room",
+"I_radiation_file_path" : "radiation_dec.csv",
+"_comment" : "Irrdation profile if opted for it",
+"A_flux_tol_lux" :126.582,
+"_comment" : "Conversion of irrdation to luminosity in lux",
+"A_SD_DEV_TIME_ON" :1,
+"_comment" : "Standard deviation in minutes",
+"A_SD_DEV_TIME_OFF" :30,
+"_comment" : "Standard deviation in minutes"
+}
