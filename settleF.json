@@ -1,0 +1,11 @@
+{"EQ": "Settlement",
+"I_Resolution":5,
+"S_Fase_MODE":true,
+"houses": 
+[
+["house_ac.json", 8],
+["house_heater.json", 14],
+["house_basic.json", 30],
+["house_ev.json",6]
+]
+}

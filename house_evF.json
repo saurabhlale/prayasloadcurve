@@ -1,0 +1,18 @@
+{"EQ": "Agg",
+"I_Resolution":5,
+"S_Fase_MODE":true,
+"appliances": 
+[
+["Heater.json", 1],
+["AC.json", 1],
+["Fan.json", 1],
+["Light.json", 3],
+["LightBR.json", 4],
+["FanBR.json", 3],
+["TV.json", 1],
+["Tiago.json", 1],
+["Mixer.json", 1],
+["Refrigerator.json", 1]
+
+]
+}

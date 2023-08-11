@@ -1,7 +1,9 @@
 {
 "EQ":"AC",
 "I_eer" :3.4,
-"_comment" : "EER",
+"_comment" : "EER, kwh/kwh",
+"I_is_seer" :false,
+"_comment" : "Mark it true when 'I_eer' actually represents SEER value instead of EER",
 "I_include_wall_storage" :true,
 "_comment" : "Should stirage effect of wall to be included",
 "I_capacity" :1.5,

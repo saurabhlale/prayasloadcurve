@@ -18,6 +18,8 @@
 "_comment" : "Tank diameter in m",
 "I_Length" :0.602,
 "_comment" : "Tank lenth in m",
+"I_Room_Temp_Correction" :0.9,
+"_comment" : "Approximate correction factor to calculate room temperature from ambient temperature",
 "I_Family_size" :4,
 "A_thickness" :0.05,
 "_comment" : "Tank thickness in m",

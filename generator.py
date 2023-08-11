@@ -13,6 +13,7 @@ import sklearn
 import os
 import random
 from datetime import datetime
+import time
 
 class stathelper:
     app_counter={}
@@ -80,6 +81,19 @@ def modelACWall(Z,t,capR,capW,cond,Q,TA,H):
     dZdt = [dTWdt,dTRdt]
     return dZdt
     
+def convert_to_eer_if_needed(inputs):
+    if (inputs['I_is_seer'] == False):
+        return inputs['I_eer']
+    else:
+        #print(inputs['I_eer'])
+        seer_btu = inputs['I_eer']*3.4129
+        #print(seer_btu)
+        eer_btu=(1.12*seer_btu) - (0.02*seer_btu*seer_btu)
+        #print(eer_btu)
+        eer_kwh = eer_btu/3.4129
+        #print(eer_kwh)
+        return eer_kwh
+
 def generate_ac_load_curve(inputs):
     if (inputs['I_include_wall_storage']):
         return generate_ac_load_curve_with_wall(inputs)
@@ -97,6 +111,8 @@ def generate_ac_load_curve_with_wall(inputs):
     I_exposed_area = inputs['I_exposed_area']
     I_resolution = inputs['I_resolution']
     I_temp_file_path = inputs['I_temp_file_path']
+    
+    I_eer = convert_to_eer_if_needed(inputs)
     
     A_thickness = inputs['A_thickness']
     A_thermal_conductivity = inputs['A_thermal_conductivity']
@@ -117,6 +133,8 @@ def generate_ac_load_curve_with_wall(inputs):
     D_Convectance = ((A_Convective_Coefficient*I_exposed_area)/1000.) # (hAL), kW/K
     D_Temperature_on = I_ref_Temperature + A_On_offset
     D_Temperature_off = I_ref_Temperature + A_Off_offset
+    
+    
     
     
     times = np.arange(0,24*60,I_resolution, dtype=np.double)
@@ -220,6 +238,8 @@ def generate_ac_load_curve_without_wall(inputs):
     D_Specific_heat = inputs['D_Specific_heat']
     A_Eff = inputs['A_Eff']
     A_SD_DEV_TIME = inputs['A_SD_DEV_TIME']
+    
+    I_eer = convert_to_eer_if_needed(inputs)
     
     D_cop = I_eer
     D_heat_removed = I_capacity*A_Eff*3.5 #kW
@@ -410,6 +430,7 @@ def generate_heater_load_curve(inputs):
     I_Diameter = inputs['I_Diameter']
     I_Length = inputs['I_Length']
     I_Family_size = inputs['I_Family_size']
+    I_Room_Temp_Correction = inputs['I_Room_Temp_Correction']
 
     A_thickness = inputs['A_thickness']
     A_thermal_conductivity = inputs['A_thermal_conductivity']
@@ -431,7 +452,7 @@ def generate_heater_load_curve(inputs):
     
     times = np.arange(0,24*60,I_resolution, dtype=np.double)
     #print(times)
-    temperature =  get_temp_array(times)
+    temperature =  get_temp_array(times)*I_Room_Temp_Correction
     temperatures_room = temperature.copy()
     power = np.full_like(times,0, dtype=np.double)
     is_Heater_on = False
@@ -1016,16 +1037,29 @@ def agg_household(inputs, component, silent=True):
     appliances = inputs[component]
     I_resolution = inputs['I_Resolution']
     
+    start_time = time.time()
+    
+    fast_mode = False
+    
+    if 'S_Fase_MODE' in inputs:
+        fast_mode = inputs['S_Fase_MODE']
+    
     times = np.arange(0,24*60,I_resolution, dtype=np.double)
     poweragg = np.full_like(times,0, dtype=np.double)
 
     app_energy_counter.collect_data = True
-
-    for app in appliances:
-        #print(app)
-        for cnt in range(app[1]):
+    
+    if fast_mode==False:
+        for app in appliances:
+            #print(app)
+            for cnt in range(app[1]):
+                powertemp = load_curve_from_file(app[0],I_resolution)
+                poweragg = poweragg + powertemp
+    else:
+        for app in appliances:
             powertemp = load_curve_from_file(app[0],I_resolution)
-            poweragg = poweragg + powertemp
+            poweragg = poweragg + (powertemp*app[1])
+                
             
     kwh=np.sum(poweragg*I_resolution)/60
 
@@ -1033,6 +1067,11 @@ def agg_household(inputs, component, silent=True):
 
     if(silent == False):
         print(f"Energy Consumption : {kwh:.3f} kWh")
+
+    end_time = time.time()
+    execution_time = end_time - start_time
+
+    #print(f"Execution time: {execution_time:.6f} seconds")
 
     return times, poweragg
 
