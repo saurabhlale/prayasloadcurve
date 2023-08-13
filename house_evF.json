@@ -1,6 +1,6 @@
 {"EQ": "Agg",
 "I_Resolution":5,
-"S_Fase_MODE":true,
+"S_Fast_MODE":true,
 "appliances": 
 [
 ["Heater.json", 1],

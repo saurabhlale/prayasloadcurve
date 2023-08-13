@@ -1,6 +1,6 @@
 {"EQ": "Settlement",
 "I_Resolution":5,
-"S_Fase_MODE":true,
+"S_Fast_MODE":true,
 "houses": 
 [
 ["house_ac.json", 8],
