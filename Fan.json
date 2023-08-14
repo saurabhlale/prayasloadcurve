@@ -15,7 +15,7 @@
 "I_temp_file_path" : "temp_may.csv",
 "_comment" : "Path to temperature profile if opted for profile instead of constant value",
 "I_default_start_speed" :0,
-"A_speeds" :[0.2, 0.4, 0.6, 0.8, 1.0],
+"A_speeds" :[0.4, 0.55, 0.7, 0.85, 1.0],
 "A_speed_temps" :[26,28,30,32,34],
 "_comment" : "Temperature ranges",
 "A_SD_DEV_TIME" :5,
