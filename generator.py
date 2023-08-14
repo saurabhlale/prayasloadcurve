@@ -21,10 +21,18 @@ class stathelper:
     app_list=['AC', 'Fan', 'Generic', 'EV', 'Fridge', 'Heater', 'Light']
     collect_data = False
     resolution = None
+    scaling_factor_app = 1.
+    scaling_factor_house = 1.
     
     def insert_load_curve(self,app,power,resolution):
 
+        #print('-insert----------------')
+        #print(self.app_counter)
+        #print(self.app_power_counter)
+        #print(self.scaling_factor_app)
+        #print(self.scaling_factor_house)
         if ((app in self.app_list) and self.collect_data):
+            power = power*self.scaling_factor_house*self.scaling_factor_app
             kwh=np.sum(power*resolution)/60.
             self.resolution = resolution
             if (app in self.app_counter):
@@ -992,6 +1000,9 @@ def load_curve_from_file(filein,resolution):
     
     timesreq = np.arange(0,24*60,resolution, dtype=np.double)
     
+    #print('load_curve----1')
+    #print(app_energy_counter.scaling_factor_app)
+    #print(app_energy_counter.scaling_factor_house)
     
     times = None
     power = None
@@ -1027,6 +1038,10 @@ def load_curve_from_file(filein,resolution):
     #print(power.shape)
     powereq = get_scaled_load_curve(times,power,timesreq)
     
+    #print('load_curve----2')
+    #print(app_energy_counter.scaling_factor_app)
+    #print(app_energy_counter.scaling_factor_house)
+    
     app_energy_counter.insert_load_curve(inputs2["EQ"],powereq,resolution)
 
     return powereq
@@ -1041,8 +1056,8 @@ def agg_household(inputs, component, silent=True):
     
     fast_mode = False
     
-    if 'S_Fase_MODE' in inputs:
-        fast_mode = inputs['S_Fase_MODE']
+    if 'S_Fast_MODE' in inputs:
+        fast_mode = inputs['S_Fast_MODE']
     
     times = np.arange(0,24*60,I_resolution, dtype=np.double)
     poweragg = np.full_like(times,0, dtype=np.double)
@@ -1050,18 +1065,35 @@ def agg_household(inputs, component, silent=True):
     app_energy_counter.collect_data = True
     
     if fast_mode==False:
+        if component=='appliances':
+            app_energy_counter.scaling_factor_app = 1
+        else:
+            app_energy_counter.scaling_factor_house = 1
+            
         for app in appliances:
             #print(app)
             for cnt in range(app[1]):
                 powertemp = load_curve_from_file(app[0],I_resolution)
                 poweragg = poweragg + powertemp
     else:
+        
         for app in appliances:
+            #print(app)
+
+            if component=='appliances':
+                app_energy_counter.scaling_factor_app = app[1]
+            else:
+                app_energy_counter.scaling_factor_house = app[1]
+            
+            #print(app_energy_counter.scaling_factor_app)
+            #print(app_energy_counter.scaling_factor_house)
+            
+
             powertemp = load_curve_from_file(app[0],I_resolution)
             poweragg = poweragg + (powertemp*app[1])
                 
             
-    kwh=np.sum(poweragg*I_resolution)/60
+    kwh=sum(app_energy_counter.app_counter.values())
 
     app_energy_counter.plot_energy_pi()
 
